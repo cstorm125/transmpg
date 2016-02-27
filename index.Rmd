@@ -1,0 +1,89 @@
+---
+title: "Automatic and Manual Tranmissions on Miles per Gallon"
+author: "Charin Polpanumas"
+date: "February 10, 2559 BE"
+output:
+  html_document:
+    theme: readable
+    toc: yes
+  pdf_document:
+    fig_crop: no
+    fig_height: 5.4
+    fig_width: 7.2
+---
+#Executive Summary
+We examine the effect of transmissions, either being automatic or manual, of 32 automobiles controlling for other design and performance aspects, based on the *mtcars* dataset. When controlling for confounders selected using stepwise AIC algorithm (number of cylinders, horsepower, and weight), transmissions have a slight effect on miles per gallon but it is not statistically significant.
+
+#Exploratory Data Analysis
+
+The dataset was extracted from the 1947 *Motor Trend* magazine. The columns include 10 aspects of automobile design and performance. The rows represent 32 automobiles. 
+
+*cyl*,*vs*, *am*, *gear*, and *carb* are more suitably treated as factors, whereas the rest are numeric. Create a new dataset m and apply this treatment
+```{r, echo=FALSE,results='hide'}
+m<-mtcars
+m$cyl <- as.factor(m$cyl)
+m$vs <- as.factor(m$vs) 
+m$am <- as.factor(m$am)
+m$gear <- as.factor(m$gear)
+m$carb <- as.factor(m$carb)
+```
+
+
+Plot correlation matrix in order to see if there is a chance of collinearity. We notice from the plot that pairs of variables with correlation higher than 0.8 or lower than -0,8 are (mpg,disp), (mpg,wt) (cyl,disp), (cyl,hp), (cyl,vs), (disp,wt) and should be careful when including them in the model. (See Figure 1)
+
+The boxplot suggests that automatic vehicles have smaller miles per gallon than manual vehicles. However, we need to investigate further, controlling  for effects of confounders, by using a linear regression model. (See Figure 2)
+
+#Regression Analysis
+
+## Model Selection
+
+The dependent variable is mpg, and the indepedent variable is am. Thus we can utilize multiple regression analysis using other variables in the dataset as possible confounders.
+
+We perform an AIC stepwise selection, relying on similar principles as the likelihood ratio tests using anova() discussed in class, in order to determine which variables to include. See Table 1 for all the trial models.
+```{r,results='hide'}
+base_fit <- lm(mpg~., data=m)
+step <- step(base_fit, direction="both")
+```
+
+## Results
+
+According to the result, we include cyl, hp, wt as confounders. The model we chose explains 84.01% of the variations in mpg (adjusted R-square). The model specification is statistically significant (p-value of F-stat being 1.506e-10).
+
+On average a manual vehicle has 1.809 miles better miles per gallon than an automatic vehicle but the difference is not statistically significant at 5%. We cannot conclude with the current dataset that 
+```{r,echo=FALSE}
+summary(step)
+```
+
+## Residual Analysis 
+According to Figure 3, Residuals vs Fitted and Q-Q plots demonstrate that the residuals can be said to be normally distributed. The band pattern in Scale-Location plot demonstrates constant variance of the residuals. The Residuals vs Leverage plot illustrates that all data points fall within 0.5 Cook's distance, thus no outlier has an extreme effect on overall changes in regression coefficients when removed.
+
+# Conclusion
+Although on average a manual vehicle seems to have 1.809 miles better miles per gallon than an automatic vehicle 79.4% of the time (p=0.206), from the given dataset, we cannot conclude if transmissions have a statistically significant influence on miles per gallon when controlled for number of cylinders, horsepower, and weight. This may be because the influence has already been captured by the confounders. 
+
+# Appendix
+## Table 1 All Models Performed by AIC Stepwise Selection
+Model 1 includes all predictors. At each step a predictor is removed. This iterates until the AIC is minimized.
+```{r,echo=FALSE}
+step$anova
+```
+
+## Figure 1 Correlation Matrix of Variables in mtcars
+```{r,echo=FALSE}
+require(corrplot)
+corrplot(cor(mtcars), method='circle')
+```
+
+## Figure 2 Miles per Gallon of Automatic vs Manual Vehicles
+```{r,echo=FALSE}
+require(ggplot2)
+g<-ggplot(data=m,aes(y=mpg,x=am,group=am,fill=am)) + xlab('Transmissions') + ylab('Miles per Gallon')+ggtitle("Miles per Gallon of Automatic vs Manual Vehicles")
+g+geom_boxplot() + scale_fill_discrete(name='Transmissions',
+    breaks=c('0','1'),labels=c('Automatic','Manual'))
+```
+
+## Figure 3 Residual Plots
+```{r,echo=FALSE}
+par(mfrow=c(2,2))
+fit<-lm(mpg ~ cyl + hp + wt + am, data = m)
+plot(fit)
+```
